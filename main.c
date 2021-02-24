@@ -21,13 +21,17 @@ pthread_cond_t cond_3 = PTHREAD_COND_INITIALIZER;
 int buff_1_idx = 0;                                                             //  Initialize index counters for buffers
 int buff_2_idx = 0;
 int buff_3_idx = 0;
+int buff_1_get = 0;                                                             //  Initialize index counters for buffers
+int buff_2_get = 0;
+int buff_3_get = 0;
+
 int buff_1_count = 0;
 int buff_2_count = 0;
 int buff_3_count = 0;
 
 bool stpline = false;
 int linesread = 0;
-
+int thread_tracker = 0;
 char buffer_1[MAX_LINES][MAX_LINE_LEN] = {{0}};
 char buffer_2[MAX_LINES][MAX_LINE_LEN] = {{0}};
 char buffer_3[MAX_LINES][MAX_LINE_LEN] = {{0}};
@@ -46,7 +50,7 @@ char* get_buff_1();
 void put_buff_2(char* line);
 char* get_buff_2();
 void print_buffers();
-
+char* string_chopper(int n, char* input);
 
 int main(){
 
@@ -64,20 +68,25 @@ int main(){
   pthread_join(t4, NULL);
 
 
-  print_buffers();
+  // print_buffers();
 
   return 0;
 }
 
 
 
-//  ********************************    BUFFER 1  ******************************
+// ********************************    BUFFER 1  *************************
+// ***********************************************************************
+// Function: put_buff_1
+// Purpose: puts string in buff1
+// input: string
+// output: NA
+// ***********************************************************************
 void put_buff_1(char* line){
 
   pthread_mutex_lock(&buff_1);                                                  //  locking mutex for data entry
   strcpy(buffer_1[buff_1_idx],line);                                            //  copies input to index of buffer_1
-
-  free(line);                                                                   //  frees input
+  buff_1_idx++;
   buff_1_count++;
   pthread_cond_signal(&cond_1);
 
@@ -85,6 +94,12 @@ void put_buff_1(char* line){
 
 }
 
+// ***********************************************************************
+// Function: get_buff_1
+// Purpose: gets string from buff1
+// input: string
+// output: NA
+// ***********************************************************************
 char* get_buff_1(){
 
 
@@ -93,22 +108,28 @@ char* get_buff_1(){
     pthread_cond_wait(&cond_1, &buff_1);
   }
 
-  buff_1_idx++;                                                                 // Increment the index from which the string will be gotten from buffer
+  buff_1_get++;                                                                 // Increment the index from which the string will be gotten from buffer
   buff_1_count--;                                                               // decrement the count of items in the buffer
-  printf(" buff1 index: %d\n", buff_3_idx);
 
   pthread_mutex_unlock(&buff_1);                                                //  unlock mutex for next thread_1() call
 
-  return buffer_1[buff_1_idx - 1];                                              //  returns next string from buffer
+  return buffer_1[buff_1_get - 1];                                              //  returns next string from buffer
 
 }
 
 
-//  ********************************    BUFFER 2  ******************************
+// ********************************    BUFFER 2  *************************
+// ***********************************************************************
+// Function: put_buff_2
+// Purpose: puts string in buff2
+// input: string
+// output: NA
+// ***********************************************************************
 void put_buff_2(char* line){
 
-  pthread_mutex_lock(&buff_2);                                                  //  locking mutex for data entry
   strcpy(buffer_2[buff_2_idx],line);                                            //  copies input to index of buffer_2
+
+  buff_2_idx++;
   buff_2_count++;
   pthread_cond_signal(&cond_2);
 
@@ -116,6 +137,12 @@ void put_buff_2(char* line){
 
 }
 
+// ***********************************************************************
+// Function: get_buff_2
+// Purpose: gets string from buff2
+// input: string
+// output: NA
+// ***********************************************************************
 char* get_buff_2(){
 
   // Lock the mutex before checking if the buffer has data
@@ -124,29 +151,42 @@ char* get_buff_2(){
     pthread_cond_wait(&cond_2, &buff_2);
   }
 
-  buff_2_idx++;                                                                 // Increment the index from which the string will be gotten from buffer
+  buff_2_get++;                                                                 // Increment the index from which the string will be gotten from buffer
   buff_2_count--;                                                               // decrement the count of items in the buffer
-  printf(" buff2 index: %d\n", buff_3_idx);
 
   pthread_mutex_unlock(&buff_2);                                                //  unlock mutex for next thread_1() call
 
-  return buffer_2[buff_2_idx - 1];                                              //  returns next string from buffer
+  return buffer_2[buff_2_get - 1];                                              //  returns next string from buffer
 
 }
 
 
-//  ********************************    BUFFER 3  ******************************
+// ********************************    BUFFER 3  *************************
+// ***********************************************************************
+// Function: put_buff_3
+// Purpose: puts string in buff3
+// input: string
+// output: NA
+// ***********************************************************************
 void put_buff_3(char* line){
 
   pthread_mutex_lock(&buff_3);                                                  //  locking mutex for data entry
   strcpy(buffer_3[buff_3_idx],line);                                            //  copies input to index of buffer_3
   buff_3_count++;
+  buff_3_idx++;
   pthread_cond_signal(&cond_3);
 
   pthread_mutex_unlock(&buff_3);
 
 }
 
+
+// ***********************************************************************
+// Function: get_buff_3
+// Purpose: gets string from buff3
+// input: string
+// output: NA
+// ***********************************************************************
 char* get_buff_3(){
 
   // Lock the mutex before checking if the buffer has data
@@ -155,67 +195,94 @@ char* get_buff_3(){
     pthread_cond_wait(&cond_3, &buff_3);
   }
 
-  buff_3_idx++;                                                                 // Increment the index from which the string will be gotten from buffer
-  printf(" buff3 index: %d\n", buff_3_idx);
+  buff_3_get++;                                                                 // Increment the index from which the string will be gotten from buffer
   buff_3_count--;                                                               // decrement the count of items in the buffer
 
   pthread_mutex_unlock(&buff_3);                                                //  unlock mutex for next thread_2() call
 
-  return buffer_3[buff_3_idx - 1];                                              //  returns next string from buffer
+  return buffer_3[buff_3_get - 1];                                                  //  returns next string from buffer
 
 }
 
 
 
 
-
+// ***********************************************************************
+// Function: thread_1
+// Purpose: gets input line from stdin, puts in buff1
+// input: args
+// output: NA
+// ***********************************************************************
 void *thread_1(void* args){
 
   int k = 0;
-  while (stpline == false){
-    char* line = NULL;                                                            //  the string var that getline puts input in
-    size_t len = 0;                                                               //  tells getline how far to go
-    ssize_t char_count = 0;                                                       //  getline changes this to # of chars gotten, including \n
+  for(k = 0; k < 50; k++){
+  // while (stpline == false){
+    char line[1000];
+    fgets(line, 1000, stdin);
 
-    char_count = getline(&line, &len, stdin);                                     //  gets line delimited by "\n" from stdin, alloc and stores it in line, must free line after use
-    if(strcmp("STOP\n", line) == 0){
-      stpline = true;
+
+    if(strcmp(line, "STOP\n") == 0){
+      put_buff_1(line);
+      return NULL;
     }
 
     put_buff_1(line);
-    k++;
-    void print_buffers();
 
   }
-  printf(" THREAD 1 returning \n");
+  // printf(" THREAD 1 returning \n");
+  // fflush(stdout);
 
   return NULL;
 }
 
+
+// ***********************************************************************
+// Function: thread_2
+// Purpose: gets input line buff1, changes newline to space, puts in buff2
+// input: args
+// output: NA
+// ***********************************************************************
 void *thread_2(void* args){
 
   int k = 0;
-  while (stpline == false){
-    char input[1000];                                                             //  string that will be put in buffer 2
+  for(k = 0; k < 50; k++){
+  // while (stpline == false){
+    char input[1000];                                                         //  string that will be put in buffer 2
+    char* output;
     strcpy(input, get_buff_1());                                                  //  copying input from buff1 to string
 
-    newl_to_space(input);                                                         //  changing newl to space
+    newl_to_space(input);
 
+    // printf(" buff2 --> |%s|\n", input);
     put_buff_2(input);                                                            //  putting output into buff2
-    void print_buffers();
+    // printf(" t2 got : %s\n", input);
 
+    if(strcmp(input, "STOP ") == 0){
+      break;
+    }
   }
 
-  printf(" THREAD 2 returning \n");
+  // printf(" THREAD 2 returning \n");
+  fflush(stdout);
+
 
   return NULL;
 
 }
 
+
+// ***********************************************************************
+// Function: thread_3
+// Purpose: gets input line buff2, changes ++ to ^ and puts line in buff3
+// input: args
+// output: NA
+// ***********************************************************************
 void *thread_3(void* args){
 
   int k = 0;
-  while (stpline == false){
+  for(k = 0; k < 50; k++){
+  // while (stpline == false){
     char input[1000];                                                             //  string that will be put in buffer 3
     strcpy(input, get_buff_2());                                                  //  copying input from buff2 to string
 
@@ -223,16 +290,25 @@ void *thread_3(void* args){
 
     put_buff_3(input);                                                            //  putting output into buff3
     void print_buffers();
-
+    if(strcmp(input, "STOP ") == 0){
+      break;
+    }
   }
 
-  printf(" THREAD 3 returning \n");
+  // printf(" THREAD 3 returning \n");
+  fflush(stdout);
 
 
   return NULL;
 
 }
 
+// ***********************************************************************
+// Function: thread_4
+// Purpose: gets input line buff3, prints to stdout when 80 chars are reached
+// input: args
+// output: NA
+// ***********************************************************************
 void *thread_4(void* args){                                                     //  output thread that prints the output
 
 
@@ -243,25 +319,19 @@ void *thread_4(void* args){                                                     
   int last_idx = 0;
   char input[1000];
 
+
   int i, k = 0;
-  while (stpline == false){
-
-  // copy buffer to input string
-  // concat string to output_buff
-  // change charcount to strlen(output_buff)
-  // change linecount to charcount / 80
-  // see how many lines need to be printed
-  // clear output buffer
-  // put lines in output buffer
-  // print lines
-
-
-
+  // while (stpline == false){
+  for(k = 0; k < 49; k++){
 
     strcpy(input, get_buff_3());                                                // copy buffer to input string
 
+    // printf(" t4: got |%s| \n", input);
     if(strcmp(input, "STOP ") == 0){
-      stpline = true;
+      // printf(" STOPLINE REACHED\n");
+      fflush(stdout);
+      break;
+      // stpline = true;
       // exit(0);
     }
 
@@ -274,13 +344,11 @@ void *thread_4(void* args){                                                     
     int j = 0;
     for(i = last_idx; i < linecount; i++){
       memset(input, 0, sizeof(char) * 80);
-      strncpy(print_buffer[j], output_buff + (i * 80), 80);
-      j++;
-    }
-
-    for(i = 0; i < linecount - last_idx; i++){
-      printf(" len: %lu line: |%s\n|", strlen(print_buffer[i]), print_buffer[i]);
+      // strncpy(print_buffer[j], output_buff + (i * 80), 80);
+      strcpy(print_buffer[j], string_chopper((i * 80), output_buff));
+      printf("%s\n", print_buffer[j]);
       fflush(stdout);
+      j++;
     }
 
     last_idx = linecount;
@@ -289,13 +357,15 @@ void *thread_4(void* args){                                                     
 
     fflush(stdout);
 
-
-    void print_buffers();
+    if(stpline == true){
+      break;
+    }
 
 
   }
 
-  printf(" THREAD 4 returning \n");
+  // printf(" THREAD 4 returning \n");
+  fflush(stdout);
 
   free(output_buff);
 
@@ -303,8 +373,38 @@ void *thread_4(void* args){                                                     
 
 }
 
+// ***********************************************************************
+// Function: string_chopper
+// Purpose: formats a string to 80 chars
+// input: int indice, string input
+// output: formatted string
+// ***********************************************************************
+char* string_chopper(int n, char* input){
 
 
+
+  char * output = (char*)malloc(80 * sizeof(char));
+
+  int i, j = 0;
+  for(i = n; j < 80; i++){
+
+    output[j] = input[i];
+    j++;
+
+
+  }
+
+  return output;
+
+
+}
+
+// ***********************************************************************
+// Function: newl_to_space
+// Purpose: changes newline char to space
+// input: string
+// output: formatted string
+// ***********************************************************************
 char* newl_to_space(char* input){                                               //  finds newline char in a string and replaces it with a space
 
   int i;
@@ -320,7 +420,12 @@ char* newl_to_space(char* input){                                               
 
 }
 
-
+// ***********************************************************************
+// Function: plus_to_carrot
+// Purpose: changes "++" to "^"
+// input: string
+// output: formatted string
+// ***********************************************************************
 char* plus_to_carrot(char* input){                                              //  replaces '++' with '^', overwriting chars and reducing strlen by # of '++'
 
   int i, j;
@@ -348,27 +453,50 @@ char* plus_to_carrot(char* input){                                              
 }
 
 
-
+// ***********************************************************************
+// Function: print_buffers
+// Purpose: printing f'n for debugging
+// input: NA
+// output: NA
+// ***********************************************************************
 void print_buffers(){
   int i;
 
-  for(i = 0; i < buff_1_idx; i++){
+  for(i = 0; i < buff_1_get; i++){
     printf(" Buffer 1[%d]: |%s|\n", i, buffer_1[i]);
+    fflush(stdout);
 
   }
 
-  for(i = 0; i < buff_2_idx; i++){
+  for(i = 0; i < buff_2_get; i++){
      printf(" Buffer 2[%d]: |%s|\n", i, buffer_2[i]);
+     fflush(stdout);
 
   }
 
-  for(i = 0; i < buff_3_idx; i++){
+  for(i = 0; i < buff_3_get; i++){
      printf(" Buffer 3[%d]: |%s|\n", i, buffer_3[i]);
+     fflush(stdout);
 
   }
+
+
+  printf(" buff_1_idx: %d \n", buff_1_idx);
+  printf(" buff_2_idx: %d \n", buff_2_idx);
+  printf(" buff_3_idx: %d \n", buff_3_idx);
+  printf(" buff_1_get: %d \n",buff_1_get);
+  printf(" buff_2_get: %d \n",buff_2_get);
+  printf(" buff_3_get: %d \n",buff_1_get);
+  printf(" buff_1_count: %d \n",buff_1_count);
+  printf(" buff_2_count: %d \n",buff_2_count);
+  printf(" buff_3_count: %d \n",buff_3_count);
 
 
 }
+
+
+
+
 
 
 
